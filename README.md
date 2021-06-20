@@ -1,47 +1,81 @@
 # OpenSSL-Certificate-Authority
 - Generate Root CA
-  ```sh
-  mkdir root-ca
+  - Generate
+    ```sh
+    cd root-ca
+    mkdir certs crl newcerts private
+    touch index.txt
+    echo 1000 > serial
 
-  cd root-ca
+    openssl genrsa -aes256 -passout pass:changeit -out private/ca.key.pem 4096
 
-  openssl genrsa -aes256 -passout pass:changeit -out ca.key.pem 4096
+    openssl req -config openssl.cnf -passin pass:changeit -key private/ca.key.pem -new -x509 -days 7300 -sha256 -extensions v3_ca -out certs/ca.cert.pem -subj "/C=TH/ST=Bangkok/L=Phayathai/O=ake-demo/CN=AKE Root CA/"
 
-  chmod 400 ca.key.pem
-
-  openssl req -passin pass:changeit -key ca.key.pem -new -x509 -days 7300 -sha256 -out ca.cert.pem -subj "/C=TH/ST=Bangkok/L=Phayathai/O=ake-demo/CN=AKE Root CA/"
-
-  openssl x509 -noout -text -in ca.cert.pem
-  ```
+    openssl x509 -noout -text -in certs/ca.cert.pem
+    ```
 
 - Generate Intermediate CA
   - Generate
     ```sh 
-    mkdir intermediate-ca
-
     cd intermediate-ca
+    mkdir certs crl csr newcerts private
+    touch index.txt
+    echo 1000 > serial
+    echo 1000 > ../root-ca/crlnumber
 
-    openssl genrsa -aes256 -passout pass:changeit -out intermediate.key.pem 4096
+    openssl genrsa -aes256 -passout pass:changeit -out private/intermediate.key.pem 4096
 
-    chmod 400 intermediate.key.pem
-
-    openssl req -passin pass:changeit -key intermediate.key.pem -new -sha256 -out intermediate.csr.pem -subj "/C=TH/ST=Bangkok/L=Phayathai/O=ake-demo/CN=AKE intermediate CA/"
+    openssl req -config openssl.cnf -passin pass:changeit -key private/intermediate.key.pem -new -sha256 -out csr/intermediate.csr.pem -subj "/C=TH/ST=Bangkok/L=Phayathai/O=ake-demo/CN=AKE intermediate CA/"
     ```
   - Signed Root Certificate
     ```sh
-    openssl x509 -req -in intermediate.csr.pem -CA ../root-ca/ca.cert.pem -CAkey ../root-ca/ca.key.pem -passin pass:changeit -CAcreateserial -days 3650 -sha256 -out intermediate.cert.pem
-
-    OR
-
-    openssl x509 -req -in intermediate.csr.pem -CA ../root-ca/ca.cert.pem -CAkey ../root-ca/ca.key.pem -passin pass:changeit -CAserial ../root-ca/ca.cert.srl -days 3650 -sha256 -out intermediate.cert.pem
+    cd ../root-ca/
+    openssl ca -batch -config openssl.cnf -extensions v3_intermediate_ca -passin pass:changeit -days 3650 -notext -md sha256 -in ../intermediate-ca/csr/intermediate.csr.pem -out ../intermediate-ca/certs/intermediate.cert.pem
     ```
   - verify
     ```sh
-    openssl x509 -noout -text -in intermediate.cert.pem
+    openssl x509 -noout -text -in ../intermediate-ca/certs/intermediate.cert.pem
 
-    openssl verify -CAfile ../root-ca/ca.cert.pem intermediate.cert.pem
+    openssl verify -CAfile certs/ca.cert.pem ../intermediate-ca/certs/intermediate.cert.pem
     ```
   - create certificate chain
     ```sh
-    cat intermediate.cert.pem ../root-ca/ca.cert.pem > ca-chain.cert.pem
+    cat ../intermediate-ca/certs/intermediate.cert.pem certs/ca.cert.pem > ../intermediate-ca/certs/ca-chain.cert.pem
+    ```
+
+- Generate Machine Cetificate
+  - create folder
+    ```sh
+    mkdir machine
+    mkdir machine/keystore
+    ```
+  - create Git Server Cetificate
+    ```sh 
+    cd intermediate-ca
+    openssl genrsa -aes256 -passout pass:changeit -out ../machine/gitserver.key.pem 2048
+
+    openssl req -config openssl.cnf -passin pass:changeit -passout pass:changeit -key ../machine/gitserver.key.pem -new -sha256 -out ../machine/gitserver.csr.pem -subj "/C=TH/ST=Bangkok/L=Phayathai/O=ake-demo/CN=gitserver.ake.com/"
+
+    openssl ca -batch -config openssl.cnf -extensions server_cert -passin pass:changeit -days 1825 -notext -md sha256 -in ../machine/gitserver.csr.pem -out ../machine/gitserver.cert.pem
+
+    openssl x509 -noout -text -in ../machine/gitserver.cert.pem
+
+    openssl verify -CAfile certs/ca-chain.cert.pem ../machine/gitserver.cert.pem
+
+    openssl pkcs12 -export -passin pass:changeit -passout pass:changeit -out ../machine/keystore/gitserver.p12 -inkey ../machine/gitserver.key.pem -in ../machine/gitserver.cert.pem -certfile certs/ca-chain.cert.pem -name gitserver.ake.com
+    ```
+  - create Docker Registry Cetificate
+    ```sh 
+    cd intermediate-ca
+    openssl genrsa -aes256 -passout pass:changeit -out ../machine/registry.key.pem 2048
+
+    openssl req -config openssl.cnf -passin pass:changeit -passout pass:changeit -key ../machine/registry.key.pem -new -sha256 -out ../machine/registry.csr.pem -subj "/C=TH/ST=Bangkok/L=Phayathai/O=ake-demo/CN=registry.ake.com/"
+
+    openssl ca -batch -config openssl.cnf -extensions server_cert -passin pass:changeit -days 1825 -notext -md sha256 -in ../machine/registry.csr.pem -out ../machine/registry.cert.pem
+
+    openssl x509 -noout -text -in ../machine/registry.cert.pem
+
+    openssl verify -CAfile certs/ca-chain.cert.pem ../machine/registry.cert.pem
+
+    openssl pkcs12 -export -passin pass:changeit -passout pass:changeit -out ../machine/keystore/registry.p12 -inkey ../machine/registry.key.pem -in ../machine/registry.cert.pem -certfile certs/ca-chain.cert.pem -name registry.ake.com
     ```
