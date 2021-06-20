@@ -1,3 +1,13 @@
-intermediate-ca/*
-machine/*
-root-ca/*
+*.pem
+*.srl
+*.p12
+*/certindex
+*/certserial
+*/crlnumber
+*/crlnumber
+*/index.txt
+*/index.txt.attr
+*/index.txt.attr.old
+*/index.txt.old
+*/serial
+*/serial.old
