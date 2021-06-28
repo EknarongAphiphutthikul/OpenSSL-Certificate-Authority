@@ -49,6 +49,14 @@
     mkdir machine
     mkdir machine/keystore
     ```
+  - create truststore
+    ```sh
+    cd intermediate-ca
+
+    keytool -keystore ../machine/keystore/truststore.jks -storetype PKCS12 -alias rootca -import -file ../root-ca/certs/ca.cert.pem -storepass changeit
+
+    keytool -importcert -alias intermediateca -keystore ../machine/keystore/truststore.jks -file certs/intermediate.cert.pem -storepass changeit
+    ```
   - create Git Server Cetificate
     ```sh 
     cd intermediate-ca
@@ -78,4 +86,19 @@
     openssl verify -CAfile certs/ca-chain.cert.pem ../machine/registry.cert.pem
 
     openssl pkcs12 -export -passin pass:changeit -passout pass:changeit -out ../machine/keystore/registry.p12 -inkey ../machine/registry.key.pem -in ../machine/registry.cert.pem -certfile certs/ca-chain.cert.pem -name registry.ake.com
+    ```
+  - create Jenkins Cetificate
+    ```sh 
+    cd intermediate-ca
+    openssl genrsa -aes256 -passout pass:changeit -out ../machine/jenkins.key.pem 2048
+
+    openssl req -config openssl.cnf -passin pass:changeit -passout pass:changeit -key ../machine/jenkins.key.pem -new -sha256 -out ../machine/jenkins.csr.pem -subj "/C=TH/ST=Bangkok/L=Phayathai/O=ake-demo/CN=jenkins.ake.com/"
+
+    openssl ca -batch -config openssl.cnf -extensions server_cert -passin pass:changeit -days 1825 -notext -md sha256 -in ../machine/jenkins.csr.pem -out ../machine/jenkins.cert.pem
+
+    openssl x509 -noout -text -in ../machine/jenkins.cert.pem
+
+    openssl verify -CAfile certs/ca-chain.cert.pem ../machine/jenkins.cert.pem
+
+    openssl pkcs12 -export -passin pass:changeit -passout pass:changeit -out ../machine/keystore/jenkins.p12 -inkey ../machine/jenkins.key.pem -in ../machine/jenkins.cert.pem -certfile certs/ca-chain.cert.pem -name jenkins.ake.com
     ```
