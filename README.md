@@ -101,4 +101,6 @@
     openssl verify -CAfile certs/ca-chain.cert.pem ../machine/jenkins.cert.pem
 
     openssl pkcs12 -export -passin pass:changeit -passout pass:changeit -out ../machine/keystore/jenkins.p12 -inkey ../machine/jenkins.key.pem -in ../machine/jenkins.cert.pem -certfile certs/ca-chain.cert.pem -name jenkins.ake.com
+
+    keytool -importkeystore -srckeystore ../machine/keystore/jenkins.p12 -srcstorepass changeit -srcstoretype PKCS12 -srcalias jenkins.ake.com -deststoretype JKS -destkeystore ../machine/keystore/jenkins.jks -deststorepass changeit -destalias jenkins.ake.com
     ```
