@@ -53,9 +53,13 @@
     ```sh
     cd intermediate-ca
 
-    keytool -keystore ../machine/keystore/truststore.jks -storetype PKCS12 -alias rootca -import -file ../root-ca/certs/ca.cert.pem -storepass changeit
+    keytool -importcert -trustcacerts -keystore ../machine/keystore/truststore.jks -storetype PKCS12 -alias rootca -file ../root-ca/certs/ca.cert.pem -storepass changeit
 
-    keytool -importcert -alias intermediateca -keystore ../machine/keystore/truststore.jks -file certs/intermediate.cert.pem -storepass changeit
+    keytool -importcert -trustcacerts -keystore ../machine/keystore/truststore.jks -storetype PKCS12 -alias intermediateca -file certs/intermediate.cert.pem -storepass changeit
+
+    keytool -list -v -keystore ../machine/keystore/truststore.jks | grep -A 1 "Owner"
+
+    #keytool -list -v -keystore ../machine/keystore/truststore.jks
     ```
   - create Git Server Cetificate
     ```sh 
